@@ -1,0 +1,14 @@
+---
+# cleanup jenkins installation
+
+- name: stop jenkins
+  service: name=jenkins state=stopped
+  ignore_errors: yes
+  
+- name: yum remove jenkins
+  yum: name=jenkins state=removed
+
+- name: delete jenkins folder
+  file:
+    path: "{{ jenkins_home }}"
+    state: absent

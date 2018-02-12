@@ -1,0 +1,92 @@
+---
+# install java
+
+- name: install java
+  yum: name=java-1.8.0-openjdk.x86_64 state=installed
+
+- name: set default java environment variables - JAVA_HOME
+  lineinfile:
+    dest: /etc/profile
+    regexp: ^JAVA_HOME=
+    line: JAVA_HOME=/usr/lib/jvm/jre-1.8.0-openjdk
+
+- name: set default java environment variables - JRE_HOME
+  lineinfile:
+    dest: /etc/profile
+    regexp: ^JRE_HOME=
+    line: JRE_HOME=/usr/lib/jvm/jre
+
+# prepare jenkins
+
+- name: get jenkins repo
+  get_url:
+    url: http://pkg.jenkins-ci.org/redhat-stable/jenkins.repo
+    dest: /etc/yum.repos.d/jenkins.repo
+
+- name: add Jenkins repo GPG key.
+  rpm_key:
+    state: present
+    key: "{{ jenkins_repo_key_url }}"
+
+- name: yum jenkins
+  yum: name=jenkins state=installed
+
+
+- name: modify init file
+  lineinfile:
+    dest: "{{ jenkins_init_file }}"
+    insertafter: '^{{ item.option }}='
+    regexp: '^{{ item.option}}=\"\${{ item.option }} '
+    line: '{{ item.option }}="${{ item.option }} {{ item.value }}"'
+    state: present
+  with_items: "{{ jenkins_init_changes }}"
+  register: jenkins_init_prefix
+
+- name: configure port
+  lineinfile:
+    dest: /etc/sysconfig/jenkins
+    regexp: ^JENKINS_PORT=
+    line: JENKINS_PORT=8000
+
+- name: fix firewall
+  shell: "firewall-cmd --zone=public --permanent --add-port={{ jenkins_http_port }}/tcp"
+
+- name: reload firewall
+  shell: "firewall-cmd --reload"
+
+
+
+- name: start jenkins
+  service: name=jenkins state=started
+
+- name: create custom init scripts directory
+  file:
+    path: "{{ jenkins_home }}/init.groovy.d"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: 0775
+
+- name: configure default users
+  template:
+    src: basic-security.groovy
+    dest: "{{ jenkins_home }}/init.groovy.d/basic-security.groovy"
+  register: jenkins_users_config
+
+
+- name: restart jenkins
+  service: name=jenkins state=restarted
+
+- name: wait for full startup
+  shell: "curl -D - --silent --max-time 5 http://{{ jenkins_hostname }}:{{ jenkins_http_port }}/cli/"
+  register: result
+  until: (result.stdout.find("403 Forbidden") != -1) or (result.stdout.find("200 OK") != -1) and (result.stdout.find("Please wait while") == -1)
+  retries: "{{ jenkins_connection_retries }}"
+  delay: "{{ jenkins_connection_delay }}"
+  changed_when: false
+
+- name: remove Jenkins security init scripts after first startup.
+  file:
+    path: "{{ jenkins_home }}/init.groovy.d/basic-security.groovy"
+    state: absent
+

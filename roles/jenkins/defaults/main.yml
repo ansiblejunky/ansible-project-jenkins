@@ -1,0 +1,16 @@
+---
+jenkins_home: /var/lib/jenkins
+jenkins_admin_username: admin
+jenkins_admin_password: admin
+jenkins_hostname: localhost
+jenkins_http_port: 8000
+
+jenkins_repo_key_url: "http://pkg.jenkins-ci.org/redhat-stable/jenkins-ci.org.key"
+jenkins_connection_delay: 5
+jenkins_connection_retries: 60
+jenkins_init_file: /etc/sysconfig/jenkins
+jenkins_init_changes:
+  - option: "{{ jenkins_java_options_env_var }}"
+    value: "{{ jenkins_java_options }}"
+jenkins_java_options_env_var: JENKINS_JAVA_OPTIONS
+jenkins_java_options: "-Djenkins.install.runSetupWizard=false"

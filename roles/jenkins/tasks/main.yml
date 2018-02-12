@@ -1,0 +1,17 @@
+---
+# check installation
+- name: verify jenkins already configured by checking configured admin user
+  stat:
+    path: /var/lib/jenkins/users/admin/config.xml
+  register: install_status
+
+- name: cleanup first to gaurantee we have a clean state before installing jenkins
+  include: remove.yml
+  when: not install_status.stat.exists
+
+- name: install jenkins
+  include: install.yml
+  when: not install_status.stat.exists
+
+- name: verify jenkins started
+  service: name=jenkins state=started

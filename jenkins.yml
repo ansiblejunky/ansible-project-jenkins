@@ -1,0 +1,12 @@
+---
+# - hosts: jenkins
+
+#   roles:
+#     - role: jenkins
+#       params: "{{ plugins_list_2_7_4 }}"
+
+- name: Jenkins Installation Using Ansible
+  hosts: jenkins
+  become: true
+  roles:
+    - jenkins
